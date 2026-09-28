@@ -3,10 +3,10 @@ import { getDatabase, ref, push, set, onValue, serverTimestamp } from "https://w
 import { firebaseConfig } from "./firebase-config.js";
 
 const MEMBERS = [
-  { id: "member_1", name: "Đức" }, { id: "member_2", name: "Nam" },
-  { id: "member_3", name: "Hùng" }, { id: "member_4", name: "Minh" },
-  { id: "member_5", name: "Tuấn" }, { id: "member_6", name: "An" },
-  { id: "member_7", name: "Sơn" }
+  { id: "member_1", name: "Đức" }, { id: "member_2", name: "Ánh Vy" },
+  { id: "member_3", name: "Thuận" }, { id: "member_4", name: "Thảo Vy" },
+  { id: "member_5", name: "Huệ" }, { id: "member_6", name: "Tỉnh" },
+  { id: "member_7", name: "Quyên" }
 ];
 const FINE_AMOUNT = 2000;
 const HISTORY_LIMIT = 20;
