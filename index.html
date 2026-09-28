@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta name="description" content="Theo dõi tiền phạt của nhóm một cách nhanh chóng và minh bạch.">
+  <title>Penalty Tracker — Quỹ phạt nhóm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Penalty Tracker trang chủ">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 20 7v5.2c0 4.2-3.2 7.1-8 8.8-4.8-1.7-8-4.6-8-8.8V7l8-3.5Z" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4.8m0 3h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <span>Penalty<span class="brand-light">Tracker</span></span>
+      </a>
+      <div class="topbar-right">
+        <span class="sync-status" id="syncStatus"><span class="status-dot"></span><span id="syncText">Đang kết nối...</span></span>
+        <span class="today-label" id="todayLabel"></span>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow"><span class="eyebrow-dot"></span> QUỸ PHẠT CỦA NHÓM</span>
+          <h1>Giữ cuộc chơi<br><span>công bằng.</span></h1>
+          <p>Một lần sai, một khoản phạt. Ghi nhận nhanh, rõ ràng cho cả nhóm.</p>
+        </div>
+        <div class="hero-total">
+          <span class="total-label">TỔNG QUỸ ĐÃ GHI NHẬN</span>
+          <strong id="grandTotal">—</strong>
+          <span class="total-foot"><span class="total-icon">↗</span><span id="totalEvents">Đang tải dữ liệu</span></span>
+          <div class="total-decoration" aria-hidden="true">₫</div>
+        </div>
+      </section>
+
+      <section class="stats-grid" aria-label="Thống kê tiền phạt">
+        <article class="stat-card"><div class="stat-heading"><span class="stat-icon icon-orange">◷</span><span>HÔM NAY</span></div><strong id="todayTotal">—</strong><span class="stat-caption" id="todayCount">0 lần phạt</span><span class="stat-accent accent-orange"></span></article>
+        <article class="stat-card"><div class="stat-heading"><span class="stat-icon icon-purple">▦</span><span>TUẦN NÀY</span></div><strong id="weekTotal">—</strong><span class="stat-caption" id="weekCount">0 lần phạt</span><span class="stat-accent accent-purple"></span></article>
+        <article class="stat-card"><div class="stat-heading"><span class="stat-icon icon-green">▤</span><span>THÁNG NÀY</span></div><strong id="monthTotal">—</strong><span class="stat-caption" id="monthCount">0 lần phạt</span><span class="stat-accent accent-green"></span></article>
+      </section>
+
+      <div class="content-grid">
+        <section class="panel members-panel">
+          <div class="section-heading"><div><span class="section-kicker">THÀNH VIÊN</span><h2>Bấm để ghi phạt</h2></div><span class="member-count">07 <span>THÀNH VIÊN</span></span></div>
+          <p class="section-description">Mỗi lần vi phạm sẽ cộng <strong>2.000 ₫</strong> vào quỹ.</p>
+          <div class="member-list" id="memberList" aria-live="polite"></div>
+          <div class="quick-hint"><span class="hint-spark">✳</span><span>Chạm vào thành viên để ghi nhận một lần phạt</span></div>
+        </section>
+
+        <section class="panel history-panel">
+          <div class="section-heading history-heading"><div><span class="section-kicker">HOẠT ĐỘNG GẦN ĐÂY</span><h2>Lịch sử phạt</h2></div><span class="live-pill"><span></span> TRỰC TIẾP</span></div>
+          <div class="history-list" id="historyList" aria-live="polite"></div>
+          <div class="history-footer"><span id="historySummary">Tối đa 20 lần phạt gần nhất</span><button class="text-button" id="showAllButton" type="button" hidden>Xem tất cả <span>→</span></button></div>
+        </section>
+      </div>
+
+      <section class="panel leaderboard-panel">
+        <div class="section-heading leaderboard-heading"><div><span class="section-kicker">TỔNG KẾT</span><h2>Thống kê thành viên</h2></div><span class="leaderboard-note">Xếp theo tổng tiền phạt</span></div>
+        <div class="member-stats" id="memberStats"></div>
+      </section>
+      <footer class="footer"><span class="footer-brand">PT<span>•</span></span><span>Minh bạch một chút, vui vẻ cả nhóm.</span><span class="fine-print">Mỗi lần vi phạm <b>2.000 ₫</b></span></footer>
+    </main>
+  </div>
+  <div class="toast-region" id="toastRegion" aria-live="assertive"></div>
+  <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
+    <div class="dialog-mark">!</div><span class="section-kicker">XÁC NHẬN GHI PHẠT</span><h2 id="confirmTitle">Ghi nhận lần phạt?</h2><p id="confirmMessage"></p>
+    <div class="dialog-actions"><button class="button-secondary" id="cancelPenalty" type="button">Huỷ</button><button class="button-primary" id="confirmPenalty" type="button">Xác nhận phạt</button></div>
+  </dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
