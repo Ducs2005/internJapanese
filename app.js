@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, onAuthStateChanged, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { USERS } from "./users.js";
 
@@ -179,6 +179,51 @@ async function handleLogin(event) {
   }
 }
 
+async function handlePasswordChange(event) {
+  event.preventDefault();
+  const currentPassword = $("currentPassword").value;
+  const newPassword = $("newPassword").value;
+  const confirmPassword = $("confirmNewPassword").value;
+  const error = $("changePasswordError");
+  const button = $("changePasswordButton");
+  error.textContent = "";
+  if (newPassword !== confirmPassword) {
+    error.textContent = "Mật khẩu mới nhập lại chưa khớp.";
+    return;
+  }
+  if (newPassword === currentPassword) {
+    error.textContent = "Mật khẩu mới phải khác mật khẩu hiện tại.";
+    return;
+  }
+  const user = state.user;
+  if (!user?.email) {
+    error.textContent = "Phiên đăng nhập không hợp lệ. Hãy đăng nhập lại.";
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Đang cập nhật…";
+  try {
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+    $("changePasswordDialog").close();
+    $("changePasswordForm").reset();
+    showToast("Đã đổi mật khẩu tài khoản.", "success");
+  } catch (changeError) {
+    console.error("Đổi mật khẩu thất bại:", changeError);
+    if (changeError.code === "auth/invalid-credential" || changeError.code === "auth/wrong-password") {
+      error.textContent = "Mật khẩu hiện tại chưa đúng.";
+    } else if (changeError.code === "auth/weak-password" || changeError.code === "auth/password-does-not-meet-requirements") {
+      error.textContent = "Mật khẩu mới chưa đáp ứng yêu cầu của Firebase.";
+    } else {
+      error.textContent = "Chưa đổi được mật khẩu. Hãy thử đăng nhập lại rồi thao tác lại.";
+    }
+  } finally {
+    button.disabled = false;
+    button.textContent = "Lưu mật khẩu mới";
+  }
+}
+
 function openConfirm(memberId) {
   if (!state.connected || state.pending) return showToast(state.pending ? "Đang ghi lần phạt trước đó…" : "Cần kết nối mạng để ghi phạt.", "warning");
   const member = memberFor(memberId);
@@ -225,6 +270,21 @@ $("cancelPenalty").addEventListener("click", () => $("confirmDialog").close());
 $("confirmPenalty").addEventListener("click", confirmPenalty);
 $("confirmDialog").addEventListener("click", (event) => { if (event.target === $("confirmDialog")) $("confirmDialog").close(); });
 $("loginForm").addEventListener("submit", handleLogin);
+$("changePasswordForm").addEventListener("submit", handlePasswordChange);
+$("openChangePassword").addEventListener("click", () => {
+  $("changePasswordError").textContent = "";
+  $("changePasswordDialog").showModal();
+});
+$("cancelChangePassword").addEventListener("click", () => {
+  $("changePasswordDialog").close();
+  $("changePasswordForm").reset();
+});
+$("changePasswordDialog").addEventListener("click", (event) => {
+  if (event.target === $("changePasswordDialog")) {
+    $("changePasswordDialog").close();
+    $("changePasswordForm").reset();
+  }
+});
 $("signOutButton").addEventListener("click", async () => {
   try { await signOut(auth); }
   catch (error) { console.error("Đăng xuất thất bại:", error); showToast("Chưa đăng xuất được. Thử lại.", "error"); }

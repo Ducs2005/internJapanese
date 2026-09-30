@@ -38,7 +38,7 @@ Quy tắc trên cho phép mọi tài khoản đã đăng nhập đọc lịch s�
 | `tinh` | `tinh@internjapanese.app` | Tỉnh |
 | `quyen` | `quyen@internjapanese.app` | Quyên |
 
-Firebase Authentication là nơi lưu thông tin đăng nhập; `users.js` không lưu mật khẩu vì GitHub Pages công khai mã nguồn. App không có chức năng đổi mật khẩu. Firebase Auth giữ phiên đăng nhập cục bộ trên trình duyệt cho đến khi người dùng đăng xuất.
+Firebase Authentication là nơi lưu thông tin đăng nhập; `users.js` không lưu mật khẩu vì GitHub Pages công khai mã nguồn. Người dùng có thể đổi mật khẩu trong mục **Đổi mật khẩu**; thao tác nhập mật khẩu hiện tại để xác thực lại trước khi cập nhật. Firebase Auth giữ phiên đăng nhập cục bộ trên trình duyệt cho đến khi người dùng đăng xuất.
 
 ## Chạy thử
 

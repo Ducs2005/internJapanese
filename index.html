@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#f5f7fb">
   <meta name="description" content="Theo dõi tiền phạt của nhóm một cách nhanh chóng và minh bạch.">
   <title>Penalty Tracker — Quỹ phạt nhóm</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -41,6 +42,7 @@
       <div class="topbar-right">
         <span class="sync-status" id="syncStatus"><span class="status-dot"></span><span id="syncText">Đang kết nối...</span></span>
         <span class="signed-in-as" id="signedInAs"></span>
+        <button class="sign-out-button" id="openChangePassword" type="button">Đổi mật khẩu</button>
         <button class="sign-out-button" id="signOutButton" type="button">Đăng xuất</button>
         <span class="today-label" id="todayLabel"></span>
       </div>
@@ -93,6 +95,19 @@
   <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
     <div class="dialog-mark">!</div><span class="section-kicker">XÁC NHẬN GHI PHẠT</span><h2 id="confirmTitle">Ghi nhận lần phạt?</h2><p id="confirmMessage"></p>
     <div class="dialog-actions"><button class="button-secondary" id="cancelPenalty" type="button">Huỷ</button><button class="button-primary" id="confirmPenalty" type="button">Xác nhận phạt</button></div>
+  </dialog>
+  <dialog class="confirm-dialog password-dialog" id="changePasswordDialog" aria-labelledby="changePasswordTitle">
+    <div class="dialog-mark">⌁</div><span class="section-kicker">BẢO MẬT TÀI KHOẢN</span><h2 id="changePasswordTitle">Đổi mật khẩu</h2>
+    <form id="changePasswordForm" class="password-form">
+      <label for="currentPassword">Mật khẩu hiện tại</label>
+      <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" required>
+      <label for="newPassword">Mật khẩu mới</label>
+      <input id="newPassword" name="newPassword" type="password" autocomplete="new-password" minlength="6" required>
+      <label for="confirmNewPassword">Nhập lại mật khẩu mới</label>
+      <input id="confirmNewPassword" name="confirmNewPassword" type="password" autocomplete="new-password" minlength="6" required>
+      <p class="login-error" id="changePasswordError" role="alert"></p>
+      <div class="dialog-actions"><button class="button-secondary" id="cancelChangePassword" type="button">Huỷ</button><button class="button-primary" id="changePasswordButton" type="submit">Lưu mật khẩu mới</button></div>
+    </form>
   </dialog>
   <script type="module" src="app.js"></script>
 </body>
