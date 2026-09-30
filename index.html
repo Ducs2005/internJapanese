@@ -12,7 +12,27 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
+  <section class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <a class="brand login-brand" href="#top" aria-label="Penalty Tracker">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 20 7v5.2c0 4.2-3.2 7.1-8 8.8-4.8-1.7-8-4.6-8-8.8V7l8-3.5Z" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4.8m0 3h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <span>Penalty<span class="brand-light">Tracker</span></span>
+      </a>
+      <span class="section-kicker">KHU VỰC NHÓM</span>
+      <h1>Đăng nhập</h1>
+      <p class="login-description">Đăng nhập để xem quỹ phạt và ghi nhận hoạt động.</p>
+      <form id="loginForm" class="login-form">
+        <label for="loginUsername">Tên đăng nhập</label>
+        <input id="loginUsername" name="username" autocomplete="username" required placeholder="Ví dụ: duc">
+        <label for="loginPassword">Mật khẩu</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Nhập mật khẩu">
+        <p class="login-error" id="loginError" role="alert"></p>
+        <button class="button-primary login-submit" id="loginButton" type="submit">Đăng nhập</button>
+      </form>
+      <p class="login-footnote">Phiên đăng nhập sẽ được lưu trên trình duyệt này.</p>
+    </div>
+  </section>
+  <div class="app-shell" id="appShell" hidden>
     <header class="topbar">
       <a class="brand" href="#top" aria-label="Penalty Tracker trang chủ">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 20 7v5.2c0 4.2-3.2 7.1-8 8.8-4.8-1.7-8-4.6-8-8.8V7l8-3.5Z" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4.8m0 3h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
@@ -20,6 +40,8 @@
       </a>
       <div class="topbar-right">
         <span class="sync-status" id="syncStatus"><span class="status-dot"></span><span id="syncText">Đang kết nối...</span></span>
+        <span class="signed-in-as" id="signedInAs"></span>
+        <button class="sign-out-button" id="signOutButton" type="button">Đăng xuất</button>
         <span class="today-label" id="todayLabel"></span>
       </div>
     </header>

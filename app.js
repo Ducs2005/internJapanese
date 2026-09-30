@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
+import { USERS } from "./users.js";
 
 const MEMBERS = [
   { id: "member_1", name: "Đức" }, { id: "member_2", name: "Ánh Vy" },
@@ -10,8 +12,10 @@ const MEMBERS = [
 ];
 const FINE_AMOUNT = 2000;
 const HISTORY_LIMIT = 20;
-const state = { events: [], connected: false, pending: false, showAll: false, selectedMember: null };
+const state = { events: [], connected: false, pending: false, showAll: false, selectedMember: null, user: null, authReady: false };
 let database;
+let auth;
+let stopConnections = [];
 const money = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
 const $ = (id) => document.getElementById(id);
 
@@ -25,6 +29,7 @@ function startOfWeek(date) {
   return start;
 }
 function memberFor(id) { return MEMBERS.find((member) => member.id === id); }
+function currentProfile(user) { return USERS.find((account) => account.email.toLowerCase() === (user?.email || "").toLowerCase()); }
 function setSyncStatus() {
   const status = $("syncStatus");
   const text = $("syncText");
@@ -37,7 +42,7 @@ function renderMembers() {
   const totals = Object.fromEntries(MEMBERS.map((member) => [member.id, 0]));
   state.events.forEach((event) => { if (totals[event.memberId] !== undefined) totals[event.memberId] += Number(event.amount) || FINE_AMOUNT; });
   $("memberList").innerHTML = MEMBERS.map((member, index) => `
-    <button class="member-row" type="button" data-member-id="${member.id}" aria-label="Phạt ${member.name} ${formatMoney(FINE_AMOUNT)}">
+    <button class="member-row" type="button" data-member-id="${member.id}" aria-label="Phạt ${member.name} ${formatMoney(FINE_AMOUNT)}" ${!state.user || !state.connected ? "disabled" : ""}>
       <span class="avatar avatar-${index + 1}">${initials(member.name)}</span>
       <span class="member-info"><strong>${member.name}</strong><small>${money.format(totals[member.id] / FINE_AMOUNT)} lần vi phạm</small></span>
       <span class="member-total">${formatMoney(totals[member.id])}</span>
@@ -86,7 +91,7 @@ function renderHistory() {
     history.innerHTML = visible.map((event, index) => {
       const member = memberFor(event.memberId);
       if (!member) return "";
-      return `<article class="history-row"><span class="history-avatar avatar-${(MEMBERS.findIndex((item) => item.id === member.id) % 7) + 1}">${initials(member.name)}</span><span class="history-info"><strong>${member.name}</strong><small>${formatTimestamp(eventDate(event))}</small></span><span class="history-amount">− ${formatMoney(Number(event.amount) || FINE_AMOUNT)}</span><span class="history-index">${String(visible.length - index).padStart(2, "0")}</span></article>`;
+      return `<article class="history-row"><span class="history-avatar avatar-${(MEMBERS.findIndex((item) => item.id === member.id) % 7) + 1}">${initials(member.name)}</span><span class="history-info"><strong>${member.name}</strong><small>${formatTimestamp(eventDate(event))} · Bấm bởi ${escapeHtml(event.createdByName || "Tài khoản cũ")}</small></span><span class="history-amount">− ${formatMoney(Number(event.amount) || FINE_AMOUNT)}</span><span class="history-index">${String(visible.length - index).padStart(2, "0")}</span></article>`;
     }).join("");
   }
   $("showAllButton").hidden = sorted.length <= HISTORY_LIMIT || state.showAll;
@@ -107,6 +112,73 @@ function renderMemberStats() {
 
 function render() { renderMembers(); renderStats(); renderHistory(); renderMemberStats(); }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+}
+
+function showAppForUser(user) {
+  stopConnections.forEach((stop) => stop());
+  stopConnections = [];
+  state.user = user;
+  state.authReady = true;
+  const profile = currentProfile(user);
+  $("loginScreen").hidden = Boolean(user);
+  $("appShell").hidden = !user;
+  $("signedInAs").textContent = profile?.name || user?.email || "Tài khoản";
+  if (!user) {
+    state.events = [];
+    state.connected = false;
+    render();
+    return;
+  }
+  if (!profile) {
+    showToast("Tài khoản chưa có trong users.js. Hãy nhờ quản trị viên cập nhật danh sách.", "error");
+    signOut(auth);
+    return;
+  }
+  stopConnections.push(onValue(ref(database, ".info/connected"), (snapshot) => {
+    state.connected = snapshot.val() === true;
+    setSyncStatus();
+    renderMembers();
+  }));
+  stopConnections.push(onValue(ref(database, "penalties"), (snapshot) => {
+    const value = snapshot.val() || {};
+    state.events = Object.entries(value).map(([id, event]) => ({ id, ...event })).filter((event) => memberFor(event.memberId));
+    render();
+  }, (error) => {
+    console.error("Không thể đọc dữ liệu Firebase:", error);
+    state.connected = false;
+    setSyncStatus();
+    showToast("Không đọc được dữ liệu. Kiểm tra Realtime Database Rules.", "error");
+  }));
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const username = $("loginUsername").value.trim().toLocaleLowerCase("vi");
+  const profile = USERS.find((account) => account.username.toLocaleLowerCase("vi") === username);
+  const password = $("loginPassword").value;
+  const error = $("loginError");
+  const button = $("loginButton");
+  error.textContent = "";
+  if (!profile) { error.textContent = "Tên đăng nhập hoặc mật khẩu không đúng."; return; }
+  button.disabled = true;
+  button.textContent = "Đang đăng nhập…";
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, profile.email, password);
+    $("loginPassword").value = "";
+  } catch (loginError) {
+    console.error("Đăng nhập Firebase thất bại:", loginError);
+    error.textContent = loginError.code === "auth/too-many-requests"
+      ? "Thử đăng nhập lại sau một lúc."
+      : "Tên đăng nhập hoặc mật khẩu không đúng.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Đăng nhập";
+  }
+}
+
 function openConfirm(memberId) {
   if (!state.connected || state.pending) return showToast(state.pending ? "Đang ghi lần phạt trước đó…" : "Cần kết nối mạng để ghi phạt.", "warning");
   const member = memberFor(memberId);
@@ -124,7 +196,8 @@ async function confirmPenalty() {
   $("confirmPenalty").textContent = "Đang lưu…";
   try {
     const eventRef = push(ref(database, "penalties"));
-    await set(eventRef, { memberId: member.id, memberName: member.name, amount: FINE_AMOUNT, timestamp: serverTimestamp() });
+    const profile = currentProfile(state.user);
+    await set(eventRef, { memberId: member.id, memberName: member.name, amount: FINE_AMOUNT, timestamp: serverTimestamp(), createdByUid: state.user.uid, createdByName: profile.name });
     $("confirmDialog").close();
     showToast(`Đã ghi phạt ${member.name} · ${formatMoney(FINE_AMOUNT)}`, "success");
   } catch (error) {
@@ -151,6 +224,11 @@ $("showAllButton").addEventListener("click", () => { state.showAll = true; rende
 $("cancelPenalty").addEventListener("click", () => $("confirmDialog").close());
 $("confirmPenalty").addEventListener("click", confirmPenalty);
 $("confirmDialog").addEventListener("click", (event) => { if (event.target === $("confirmDialog")) $("confirmDialog").close(); });
+$("loginForm").addEventListener("submit", handleLogin);
+$("signOutButton").addEventListener("click", async () => {
+  try { await signOut(auth); }
+  catch (error) { console.error("Đăng xuất thất bại:", error); showToast("Chưa đăng xuất được. Thử lại.", "error"); }
+});
 
 const hasConfig = firebaseConfig.apiKey !== "YOUR_API_KEY" && firebaseConfig.databaseURL.startsWith("https://") && !firebaseConfig.databaseURL.includes("YOUR_");
 if (!hasConfig) {
@@ -163,18 +241,9 @@ if (!hasConfig) {
   try {
     const app = initializeApp(firebaseConfig);
     database = getDatabase(app);
-    const connectedRef = ref(database, ".info/connected");
-    onValue(connectedRef, (snapshot) => { state.connected = snapshot.val() === true; setSyncStatus(); });
-    onValue(ref(database, "penalties"), (snapshot) => {
-      const value = snapshot.val() || {};
-      state.events = Object.entries(value).map(([id, event]) => ({ id, ...event })).filter((event) => memberFor(event.memberId));
-      render();
-    }, (error) => {
-      console.error("Không thể đọc dữ liệu Firebase:", error);
-      state.connected = false;
-      setSyncStatus();
-      showToast("Không đọc được dữ liệu. Hãy kiểm tra Database Rules.", "error");
-    });
+    auth = getAuth(app);
+    setPersistence(auth, browserLocalPersistence).catch((error) => console.error("Không lưu được phiên đăng nhập:", error));
+    onAuthStateChanged(auth, showAppForUser);
   } catch (error) {
     console.error("Firebase chưa khởi tạo được:", error);
     $("syncText").textContent = "Lỗi cấu hình Firebase";
