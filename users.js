@@ -2,7 +2,7 @@
 // email phải khớp với tài khoản tạo trong Firebase Authentication.
 // Không lưu mật khẩu tại đây; GitHub Pages công khai file này.
 export const USERS = [
-  { username: "duc", name: "Đức", email: "duc@internjapanese.app" },
+  { username: "duc", name: "Đức", email: "duc@internjapanese.app", admin: true },
   { username: "anhvy", name: "Ánh Vy", email: "anhvy@internjapanese.app" },
   { username: "thuan", name: "Thuận", email: "thuan@internjapanese.app" },
   { username: "thaovy", name: "Thảo Vy", email: "thaovy@internjapanese.app" },

@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getDatabase, ref, push, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { getDatabase, ref, push, set, remove, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, onAuthStateChanged, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { USERS } from "./users.js";
@@ -12,7 +12,7 @@ const MEMBERS = [
 ];
 const FINE_AMOUNT = 2000;
 const HISTORY_LIMIT = 20;
-const state = { events: [], connected: false, pending: false, showAll: false, selectedMember: null, user: null, authReady: false };
+const state = { events: [], connected: false, pending: false, showAll: false, selectedMember: null, selectedEvent: null, user: null, authReady: false };
 let database;
 let auth;
 let stopConnections = [];
@@ -30,6 +30,7 @@ function startOfWeek(date) {
 }
 function memberFor(id) { return MEMBERS.find((member) => member.id === id); }
 function currentProfile(user) { return USERS.find((account) => account.email.toLowerCase() === (user?.email || "").toLowerCase()); }
+function isAdmin() { return currentProfile(state.user)?.admin === true; }
 function setSyncStatus() {
   const status = $("syncStatus");
   const text = $("syncText");
@@ -91,9 +92,11 @@ function renderHistory() {
     history.innerHTML = visible.map((event, index) => {
       const member = memberFor(event.memberId);
       if (!member) return "";
-      return `<article class="history-row"><span class="history-avatar avatar-${(MEMBERS.findIndex((item) => item.id === member.id) % 7) + 1}">${initials(member.name)}</span><span class="history-info"><strong>${member.name}</strong><small>${formatTimestamp(eventDate(event))} · Bấm bởi ${escapeHtml(event.createdByName || "Tài khoản cũ")}</small></span><span class="history-amount">− ${formatMoney(Number(event.amount) || FINE_AMOUNT)}</span><span class="history-index">${String(visible.length - index).padStart(2, "0")}</span></article>`;
+      const removeButton = isAdmin() ? `<button class="remove-fine-button" type="button" data-event-id="${escapeHtml(event.id)}" aria-label="Trừ một lần phạt của ${escapeHtml(member.name)}" title="Trừ một lần phạt">−</button>` : "";
+      return `<article class="history-row"><span class="history-avatar avatar-${(MEMBERS.findIndex((item) => item.id === member.id) % 7) + 1}">${initials(member.name)}</span><span class="history-info"><strong>${member.name}</strong><small>${formatTimestamp(eventDate(event))} · Bấm bởi ${escapeHtml(event.createdByName || "Tài khoản cũ")}</small></span><span class="history-amount">− ${formatMoney(Number(event.amount) || FINE_AMOUNT)}</span>${removeButton}<span class="history-index">${String(visible.length - index).padStart(2, "0")}</span></article>`;
     }).join("");
   }
+  history.querySelectorAll("[data-event-id]").forEach((button) => button.addEventListener("click", () => openRemoveFine(button.dataset.eventId)));
   $("showAllButton").hidden = sorted.length <= HISTORY_LIMIT || state.showAll;
   $("historySummary").textContent = sorted.length ? `${visible.length} / ${sorted.length} lần phạt gần nhất` : "Tối đa 20 lần phạt gần nhất";
 }
@@ -233,6 +236,36 @@ function openConfirm(memberId) {
   $("confirmDialog").showModal();
 }
 
+function openRemoveFine(eventId) {
+  if (!isAdmin()) return showToast("Chỉ tài khoản admin mới có thể trừ lần phạt.", "error");
+  const event = state.events.find((item) => item.id === eventId);
+  if (!event) return;
+  const member = memberFor(event.memberId);
+  if (!member) return;
+  state.selectedEvent = event;
+  $("removeFineMessage").innerHTML = `Xoá khoản phạt <strong>${formatMoney(Number(event.amount) || FINE_AMOUNT)}</strong> của <strong>${member.name}</strong>? Thao tác này trừ đúng một lần phạt.`;
+  $("removeFineDialog").showModal();
+}
+
+async function confirmRemoveFine() {
+  const event = state.selectedEvent;
+  if (!isAdmin() || !event) return;
+  $("confirmRemoveFine").disabled = true;
+  $("confirmRemoveFine").textContent = "Đang cập nhật…";
+  try {
+    await remove(ref(database, `penalties/${event.id}`));
+    $("removeFineDialog").close();
+    showToast("Đã trừ một lần phạt.", "success");
+  } catch (error) {
+    console.error("Không thể trừ lần phạt:", error);
+    showToast("Không trừ được lần phạt. Kiểm tra quyền admin trong Firebase Rules.", "error");
+  } finally {
+    state.selectedEvent = null;
+    $("confirmRemoveFine").disabled = false;
+    $("confirmRemoveFine").textContent = "Trừ một lần phạt";
+  }
+}
+
 async function confirmPenalty() {
   const member = state.selectedMember;
   if (!member || state.pending) return;
@@ -268,6 +301,8 @@ $("todayLabel").textContent = new Intl.DateTimeFormat("vi-VN", { weekday: "long"
 $("showAllButton").addEventListener("click", () => { state.showAll = true; renderHistory(); });
 $("cancelPenalty").addEventListener("click", () => $("confirmDialog").close());
 $("confirmPenalty").addEventListener("click", confirmPenalty);
+$("cancelRemoveFine").addEventListener("click", () => $("removeFineDialog").close());
+$("confirmRemoveFine").addEventListener("click", confirmRemoveFine);
 $("confirmDialog").addEventListener("click", (event) => { if (event.target === $("confirmDialog")) $("confirmDialog").close(); });
 $("loginForm").addEventListener("submit", handleLogin);
 $("changePasswordForm").addEventListener("submit", handlePasswordChange);

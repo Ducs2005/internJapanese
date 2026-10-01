@@ -15,14 +15,14 @@
     "penalties": {
       ".read": "auth != null",
       "$eventId": {
-        ".write": "auth != null && !data.exists() && newData.child('createdByUid').val() == auth.uid"
+        ".write": "auth != null && ((!data.exists() && newData.child('createdByUid').val() == auth.uid) || (data.exists() && !newData.exists() && auth.token.email == 'duc@internjapanese.app'))"
       }
     }
   }
 }
 ```
 
-Quy tắc trên cho phép mọi tài khoản đã đăng nhập đọc lịch sử và chỉ tạo sự kiện mới với UID đúng tài khoản đang đăng nhập; không cho sửa/xoá sự kiện đã ghi. Không để rules cũ ở root (`.read: true`, `.write: true`), vì rules cấp trên sẽ tiếp tục mở quyền.
+Quy tắc trên cho phép mọi tài khoản đã đăng nhập đọc lịch sử và tạo sự kiện mới với UID đúng tài khoản đang đăng nhập. Chỉ tài khoản `duc@internjapanese.app` được xoá sự kiện để trừ một lần phạt; cập nhật số tiền hoặc sửa nội dung sự kiện vẫn bị chặn. Sau khi đổi rules trong Firebase Console, Duc có thể bấm nút `−` cạnh từng dòng lịch sử và xác nhận; thao tác lặp lại để trừ nhiều lần. Không để rules cũ ở root (`.read: true`, `.write: true`), vì rules cấp trên sẽ tiếp tục mở quyền.
 
 ## Tài khoản cố định
 
